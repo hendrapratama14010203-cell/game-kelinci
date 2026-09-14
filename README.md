@@ -1,4 +1,4 @@
-# 🥒 Monitoring Kebun Timun
+game kelinci
 
 Aplikasi monitoring kebun: buka halaman di HP, izinkan kamera & lokasi, foto diambil otomatis, lalu Anda konfirmasi sebelum data dikirim ke server. Semua (frontend + backend) jalan dari **satu server** Node.js/Express + MongoDB.
 
